@@ -4,8 +4,6 @@ const cors = require('cors');
 const Database = require('better-sqlite3');
 const validator = require('validator');
 
-
-
 const app = express();
 app.use(cors())
 app.use(bodyParser.json())
