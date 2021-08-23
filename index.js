@@ -84,7 +84,7 @@ app.get('/', runAsync(async (req, res, next) => {
   POST /report reports an activity. 
   JSON of request should be all strings:
     {
-      timestamp_seconds: <time server inserted activity>,
+      timestamp_seconds: <time client reported>,
       activity: <name of activity>,
       device_agent: <device that reported>,
       notes: <optional notes>
@@ -99,9 +99,37 @@ app.get('/getall', runAsync(async (req, res, next) => {
   res.send(JSON.stringify(activities));
 }));
 
+app.get('/see', runAsync(async (req, res, next) => {
+  let activities = dbQuery.all();
+
+  res.send(`
+<table>
+  <tr>
+  <th>Reported On</th>
+  <th>Activity</th>
+  <th>Notes</th>
+  </tr>
+  ${activities.map(genRow).join('')}
+</table>  
+  `)
+}))
+
+function genRow(activity) {
+  let date = new Date(parseInt(activity.timestamp_seconds) * 1000).toLocaleString()
+  return `
+  <tr>
+    <td>${date}</td>
+    <td>${activity.activity}</td>
+    <td>${activity.notes}</td>
+  </tr>
+  `
+}
+
 app.post('/report', runAsync(async (req, res, next) => {
+  console.log(req.body)
   let insert = {
-    timestamp_seconds: parseInt(new Date().getTime() / 1000)
+    timestamp_seconds: parseInt(new Date().getTime() / 1000),
+    notes: ""
   }
   if (!req.body.activity) {
     throw new Error(`No activity in request body.`);
