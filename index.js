@@ -1,12 +1,14 @@
 const express = require('express')
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const Database = require('better-sqlite3');
 const validator = require('validator');
+const db = require('./db.js');
 
 const app = express();
 app.use(cors())
 app.use(bodyParser.json())
+
+db.create().then(() => console.log("Created DB"));
 
 function runAsync (callback) {
   return function (req, res, next) {
@@ -14,56 +16,6 @@ function runAsync (callback) {
       .catch(next)
   }
 }
-
-const DB_FILE = "dsyang.sqlite";
-const CREATE_DATABASE_SQL = 
-`
-CREATE TABLE IF NOT EXISTS activities (
-	timestamp_seconds INTEGER NOT NULL,
-  client_timestamp_seconds INTEGER NOT NULL,
- 	activity TEXT NOT NULL,
-  device_agent TEXT NOT NULL,
-	notes TEXT
-);
-`;
-
-const INSERT_ITEM_SQL = 
-`
-INSERT INTO activities (
-  timestamp_seconds, 
-  client_timestamp_seconds,
-  activity,
-  device_agent,
-  notes
-) VALUES (
-  @timestamp_seconds,
-  @client_timestamp_seconds,
-  @activity,
-  @device_agent,
-  @notes);
-`;
-
-const QUERY_ACTIVITIES_SQL = 
-`
-SELECT
-   rowid,
-   timestamp_seconds,
-   client_timestamp_seconds,
-   activity,
-   device_agent,
-   notes
-FROM
-   activities
-ORDER BY 
-	timestamp_seconds DESC;
-`;
-
-const db = new Database(DB_FILE, { verbose: console.log });
-const dbCreate = db.prepare(CREATE_DATABASE_SQL);
-dbCreate.run();
-const dbInsert = db.prepare(INSERT_ITEM_SQL);
-const dbQuery = db.prepare(QUERY_ACTIVITIES_SQL);
-
 
 /* GET home page. */
 app.get('/', runAsync(async (req, res, next) => {
@@ -94,14 +46,14 @@ app.get('/', runAsync(async (req, res, next) => {
 }));
 
 app.get('/getall', runAsync(async (req, res, next) => {
-  let activities = dbQuery.all();
+  let activities = await db.all();
 
   res.send(JSON.stringify(activities));
 }));
 
 app.get('/see', runAsync(async (req, res, next) => {
-  let activities = dbQuery.all();
-
+  let activities = await db.all();
+  console.log(activities)
   res.send(`
 <table>
   <tr>
@@ -175,11 +127,15 @@ app.post('/report', runAsync(async (req, res, next) => {
   ));
 
 
-  let result = dbInsert.run(insert);
-  console.log(result)
+  let result = await db.insert(insert);
   res.send(JSON.stringify(insert));
 
 }))
+
+app.post('/create', runAsync( async (req, res, next) => {
+  await db.create();
+  res.send("db.create called");
+}));
 
 
 app.use(function (err, req, res, next) {
